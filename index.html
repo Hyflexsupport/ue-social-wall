@@ -1,30 +1,10 @@
 <!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UE Social Wall · Prueba RoomCast</title>
-<style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080c17;color:white;font-family:Arial,sans-serif}.stage{height:100vh;width:100vw;display:flex;align-items:center;justify-content:center;gap:4vw;background:radial-gradient(ellipse at center,#1b2945 0%,#080c17 75%)}.side{flex:1;text-align:center;min-width:0}.side h1{font-size:clamp(18px,3vw,70px);letter-spacing:.1em;margin:0 0 20px}.side p{color:#aebbd1;font-size:clamp(12px,1.6vw,35px)}.player{height:94vh;aspect-ratio:9/16;max-width:40vw;position:relative;background:#000;border-radius:12px;overflow:hidden;box-shadow:0 0 40px #0008}video{width:100%;height:100%;object-fit:contain}.status{position:absolute;bottom:10px;left:10px;right:10px;text-align:center;font-size:12px;color:#fff;background:#0009;padding:6px;border-radius:4px}.counter{position:absolute;top:12px;right:12px;background:#0008;border-radius:30px;padding:6px 10px;font-size:13px}
-</style>
-</head>
-<body>
-<div class="stage"><div class="side"><h1>UNIVERSIDAD<br>EUROPEA</h1><p>Social Wall · Prueba técnica</p></div><div class="player"><video id="video" autoplay muted playsinline preload="auto"></video><div class="counter" id="counter">1 / 3</div><div class="status" id="status">Cargando vídeo…</div></div><div class="side"><h1>VIDA EN<br>EL CAMPUS</h1><p>Instagram · Facebook · TikTok</p></div></div>
-<script>
-// Vídeos de demostración externos; pueden no estar disponibles en todas las redes.
-// Sustituir por archivos propios autorizados para la versión definitiva.
-const clips=[
-'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
-];
-const video=document.getElementById('video'),status=document.getElementById('status'),counter=document.getElementById('counter');
-let index=0,errors=0;
-function next(){index=(index+1)%clips.length;load()}
-function load(){counter.textContent=`${index+1} / ${clips.length}`;status.textContent='Cargando vídeo…';video.src=clips[index];video.load();video.play().catch(()=>{status.textContent='Autoplay bloqueado o vídeo no disponible';});}
-video.addEventListener('playing',()=>{status.style.display='none';errors=0});
-video.addEventListener('ended',next);
-video.addEventListener('error',()=>{status.style.display='block';status.textContent='Error de vídeo; probando siguiente…';if(++errors<clips.length)setTimeout(next,1500);else status.textContent='No se han podido cargar los vídeos. Revisar conexión y compatibilidad.'});
-video.addEventListener('stalled',()=>{status.style.display='block';status.textContent='Esperando conexión…'});
-load();
-</script>
-</body></html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UE Social Wall</title><style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090f1e;color:#fff;font-family:Arial,Helvetica,sans-serif}.layout{height:100vh;width:100vw;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,calc(100vh * 9 / 16)) minmax(0,1fr);align-items:stretch;background:linear-gradient(115deg,#0a1020,#18263f 55%,#0a1020)}.side{display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:3vw}.side h1{font-size:clamp(20px,3vw,90px);letter-spacing:.08em;margin:0 0 24px}.side p{font-size:clamp(12px,1.5vw,40px);color:#aabbd4}.player{height:100vh;position:relative;background:#000;overflow:hidden}video{display:block;width:100%;height:100%;object-fit:contain;background:#000}.counter{position:absolute;right:18px;top:18px;background:#0009;padding:8px 12px;border-radius:6px;font-size:16px}.error{position:absolute;bottom:12px;left:12px;right:12px;background:#751e1edd;padding:10px;font-size:13px;display:none}@media(max-aspect-ratio:1/1){.layout{grid-template-columns:1fr}.side{display:none}.player{width:100%;height:100vh}}
+</style></head><body><main class="layout"><section class="side"><h1>UNIVERSIDAD<br>EUROPEA</h1><p>Social Wall · Prueba técnica</p></section><section class="player"><video id="reel" autoplay muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video><div class="counter" id="counter">1 / 3</div><div class="error" id="error"></div></section><section class="side"><h1>VIDA EN<br>EL CAMPUS</h1><p>Instagram · Facebook · TikTok</p></section></main><script>
+const sources=['videos/reel-01.mp4','videos/reel-02.mp4','videos/reel-03.mp4'];const video=document.getElementById('reel'),counter=document.getElementById('counter'),error=document.getElementById('error');let index=0,attempt=0,token=0;
+function next(){load((index+1)%sources.length)}
+function load(n){index=n;attempt=0;token++;counter.textContent=`${index+1} / ${sources.length}`;error.style.display='none';video.pause();video.src=sources[index];video.load();start()}
+async function start(){video.muted=true;video.defaultMuted=true;try{await video.play();error.style.display='none'}catch(e){error.textContent='Autoplay bloqueado: '+e.message;error.style.display='block';setTimeout(()=>{if(video.paused)start()},5000)}}
+video.addEventListener('ended',next);video.addEventListener('error',()=>{if(++attempt<=2){setTimeout(()=>{video.load();start()},1500)}else{error.textContent='Vídeo no disponible. Saltando al siguiente.';error.style.display='block';setTimeout(next,2000)}});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&video.paused)start()});load(0);
+</script></body></html>
