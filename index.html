@@ -2,9 +2,54 @@
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UE Social Wall</title><style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090f1e;color:#fff;font-family:Arial,Helvetica,sans-serif}.layout{height:100vh;width:100vw;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,calc(100vh * 9 / 16)) minmax(0,1fr);align-items:stretch;background:linear-gradient(115deg,#0a1020,#18263f 55%,#0a1020)}.side{display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:3vw}.side h1{font-size:clamp(20px,3vw,90px);letter-spacing:.08em;margin:0 0 24px}.side p{font-size:clamp(12px,1.5vw,40px);color:#aabbd4}.player{height:100vh;position:relative;background:#000;overflow:hidden}video{display:block;width:100%;height:100%;object-fit:contain;background:#000}.counter{position:absolute;right:18px;top:18px;background:#0009;padding:8px 12px;border-radius:6px;font-size:16px}.error{position:absolute;bottom:12px;left:12px;right:12px;background:#751e1edd;padding:10px;font-size:13px;display:none}@media(max-aspect-ratio:1/1){.layout{grid-template-columns:1fr}.side{display:none}.player{width:100%;height:100vh}}
 </style></head><body><main class="layout"><section class="side"><h1>UNIVERSIDAD<br>EUROPEA</h1><p>Social Wall · Prueba técnica</p></section><section class="player"><video id="reel" autoplay muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video><div class="counter" id="counter">1 / 3</div><div class="error" id="error"></div></section><section class="side"><h1>VIDA EN<br>EL CAMPUS</h1><p>Instagram · Facebook · TikTok</p></section></main><script>
-const sources=['videos/reel-01.mp4','videos/reel-02.mp4','videos/reel-03.mp4'];const video=document.getElementById('reel'),counter=document.getElementById('counter'),error=document.getElementById('error');let index=0,attempt=0,token=0;
-function next(){load((index+1)%sources.length)}
-function load(n){index=n;attempt=0;token++;counter.textContent=`${index+1} / ${sources.length}`;error.style.display='none';video.pause();video.src=sources[index];video.load();start()}
-async function start(){video.muted=true;video.defaultMuted=true;try{await video.play();error.style.display='none'}catch(e){error.textContent='Autoplay bloqueado: '+e.message;error.style.display='block';setTimeout(()=>{if(video.paused)start()},5000)}}
-video.addEventListener('ended',next);video.addEventListener('error',()=>{if(++attempt<=2){setTimeout(()=>{video.load();start()},1500)}else{error.textContent='Vídeo no disponible. Saltando al siguiente.';error.style.display='block';setTimeout(next,2000)}});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&video.paused)start()});load(0);
+const sources=['videos/reel-01.mp4','videos/reel-02.mp4','videos/reel-03.mp4'];
+const video=document.getElementById('reel');
+const counter=document.getElementById('counter');
+const error=document.getElementById('error');
+let index=0, generation=0, retryTimer=null, watchdog=null, failures=0;
+function message(s){error.textContent=s;error.style.display=s?'block':'none';}
+function clearTimers(){clearTimeout(retryTimer);clearTimeout(watchdog);}
+function next(){show((index+1)%sources.length);}
+function show(n){
+  clearTimers(); generation++; index=n; failures=0;
+  counter.textContent=`${index+1} / ${sources.length}`;
+  message('');
+  video.pause(); video.removeAttribute('src'); video.load();
+  video.muted=true; video.defaultMuted=true;
+  video.src=new URL(sources[index],document.baseURI).href;
+  video.load();
+  const id=generation;
+  watchdog=setTimeout(()=>{if(id===generation && video.readyState<2) recover('El vídeo tarda demasiado en cargar');},12000);
+  if(video.readyState>=2) playReady();
+}
+async function playReady(){
+  if(video.readyState<2) return;
+  clearTimeout(watchdog);
+  video.muted=true;
+  try {await video.play();message('');}
+  catch(e){
+    if(e.name==='AbortError')return;
+    if(e.name==='NotAllowedError')message('Reproducción automática bloqueada por el navegador');
+    else message('No se pudo iniciar el vídeo: '+e.message);
+    const id=generation;
+    retryTimer=setTimeout(()=>{if(id===generation && video.paused)playReady();},3500);
+  }
+}
+function recover(reason){
+  clearTimers(); failures++;
+  if(failures>1){message(reason+'. Pasando al siguiente.');retryTimer=setTimeout(next,1800);return;}
+  message(reason+'. Reintentando…');
+  const id=generation;
+  retryTimer=setTimeout(()=>{if(id!==generation)return;video.load();watchdog=setTimeout(()=>{if(id===generation&&video.readyState<2)recover('Tiempo de carga agotado');},12000);},1500);
+}
+video.addEventListener('loadeddata',playReady);
+video.addEventListener('canplay',()=>{if(video.paused)playReady();});
+video.addEventListener('ended',next);
+video.addEventListener('error',()=>{
+  if(!video.getAttribute('src'))return;
+  const details={1:'Carga cancelada',2:'Error de red',3:'Error de decodificación',4:'Formato o fuente no admitidos'};
+  recover(details[video.error?.code]||'Error de vídeo');
+});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&video.paused&&video.readyState>=2)playReady();});
+show(0);
 </script></body></html>
